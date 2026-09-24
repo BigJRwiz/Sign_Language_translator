@@ -1,17 +1,14 @@
-"""Module de capture vidéo (V0) : accès webcam via OpenCV."""
+"""Module de capture vidéo + détection de main (V1)."""
 
 import cv2
 
-WINDOW_NAME = "Test webcam - V0"
+from src.detection.hand_detector import HandDetector
+
+WINDOW_NAME = "Détection de la main - V1"
 
 
 def _window_was_closed() -> bool:
-    """Renvoie True si la fenêtre a été fermée par l'utilisateur (icône X).
-
-    Certains backends OpenCV (Qt) lèvent une exception plutôt que de
-    renvoyer -1 une fois la fenêtre détruite : on traite ce cas comme
-    une fermeture normale.
-    """
+    """Renvoie True si la fenêtre a été fermée par l'utilisateur (icône X)."""
     try:
         return cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1
     except cv2.error:
@@ -19,7 +16,7 @@ def _window_was_closed() -> bool:
 
 
 def run_camera_test(camera_index: int = 0) -> None:
-    """Ouvre la webcam et affiche le flux.
+    """Ouvre la webcam, détecte la main via MediaPipe, affiche les landmarks.
 
     Arrêt possible par la touche 'q' ou en fermant la fenêtre (icône X).
     """
@@ -27,12 +24,15 @@ def run_camera_test(camera_index: int = 0) -> None:
     if not cap.isOpened():
         raise RuntimeError(f"Impossible d'ouvrir la webcam (index {camera_index}).")
 
+    detector = HandDetector(max_num_hands=1, min_detection_confidence=0.7)
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
+
+        frame, landmarks_list = detector.find_hands(frame)
 
         cv2.imshow(WINDOW_NAME, frame)
 
@@ -42,10 +42,10 @@ def run_camera_test(camera_index: int = 0) -> None:
         if _window_was_closed():
             break
 
+    detector.close()
     cap.release()
     cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
     run_camera_test()
-EOF
