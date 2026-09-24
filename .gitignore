@@ -1,20 +1,8 @@
-# Environnement virtuel
 .venv/
-venv/
-
-# Cache Python
 __pycache__/
-*.py[cod]
+*.pyc
 
-# Variables d'environnement
-.env
-
-# VS Code
-.vscode/
-
-# PyCharm
-.idea/
-
-# Système
-.DS_Store
-Thumbs.db
+# Données volumineuses et modèles entraînés : hors dépôt Git
+data/raw/
+data/processed/
+data/models/
