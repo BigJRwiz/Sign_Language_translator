@@ -8,7 +8,7 @@ Système intelligent de traduction bidirectionnelle entre le langage des signes 
 - OpenCV
 - MediaPipe
 - TensorFlow/Keras
-- Tkinter
+- streamlit
 - Git & GitHub
 
 ## État du projet
