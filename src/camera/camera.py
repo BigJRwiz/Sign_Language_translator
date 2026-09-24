@@ -5,6 +5,19 @@ import cv2
 WINDOW_NAME = "Test webcam - V0"
 
 
+def _window_was_closed() -> bool:
+    """Renvoie True si la fenêtre a été fermée par l'utilisateur (icône X).
+
+    Certains backends OpenCV (Qt) lèvent une exception plutôt que de
+    renvoyer -1 une fois la fenêtre détruite : on traite ce cas comme
+    une fermeture normale.
+    """
+    try:
+        return cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1
+    except cv2.error:
+        return True
+
+
 def run_camera_test(camera_index: int = 0) -> None:
     """Ouvre la webcam et affiche le flux.
 
@@ -23,12 +36,10 @@ def run_camera_test(camera_index: int = 0) -> None:
 
         cv2.imshow(WINDOW_NAME, frame)
 
-        # Arrêt sur 'q'
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
-        # Arrêt si la fenêtre a été fermée via l'icône X
-        if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
+        if _window_was_closed():
             break
 
     cap.release()
