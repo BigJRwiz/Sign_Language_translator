@@ -1,12 +1,11 @@
-"""Point d'entrée du projet Sign_Language_translator.
-
-Pour l'instant : lance le test de capture webcam (V0).
-Sera étendu au fur et à mesure de l'intégration des modules
-(détection, reconnaissance, traduction, interface).
-"""
+"""Point d'entrée du projet Sign_Language_translator."""
 
 from src.camera.camera import run_camera_test
 
 
 def main() -> None:
-    main()  # ← attention, remplace par run_camera_test()
+    run_camera_test()
+
+
+if __name__ == "__main__":
+    main()
