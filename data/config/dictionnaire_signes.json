@@ -1,0 +1,26 @@
+{
+  "salut": {
+    "label_fr": "Salut",
+    "asset": "assets/signs/salut.png"
+  },
+  "bonjour": {
+    "label_fr": "Bonjour",
+    "asset": "assets/signs/bonjour.png"
+  },
+  "bonsoir": {
+    "label_fr": "Bonsoir",
+    "asset": "assets/signs/bonsoir.png"
+  },
+  "merci": {
+    "label_fr": "Merci",
+    "asset": "assets/signs/merci.png"
+  },
+  "oui": {
+    "label_fr": "Oui",
+    "asset": "assets/signs/oui.png"
+  },
+  "non": {
+    "label_fr": "Non",
+    "asset": "assets/signs/non.png"
+  }
+}
