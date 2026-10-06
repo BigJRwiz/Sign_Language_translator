@@ -11,6 +11,7 @@ import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
+from src.recognition.augment import augment_sample, mirror_sample
 
 DATA_CSV = "data/raw/landmarks_dataset.csv"
 MODEL_PATH = "data/models/alphabet_classifier.joblib"
@@ -67,7 +68,24 @@ def train_and_evaluate(test_signer: str | None = None) -> None:
         print(f"Signeurs disponibles : {unique_signers}")
         print(f"Jeu de test = signeur laissé hors entraînement.")
 
+
+
     clf = RandomForestClassifier(n_estimators=200, random_state=42)
+
+    # --- Augmentation du jeu d'entraînement uniquement ---
+    rng = np.random.default_rng(42)
+    X_aug, y_aug = [], []
+    for features, label in zip(X_train, y_train):
+        for _ in range(4):  # 4 variantes par échantillon réel
+            X_aug.append(augment_sample(features, rng))
+            y_aug.append(label)
+        X_aug.append(mirror_sample(features))
+        y_aug.append(label)
+
+    X_train = np.vstack([X_train, np.array(X_aug)])
+    y_train = np.concatenate([y_train, np.array(y_aug)])
+    print(f"Jeu d'entraînement après augmentation : {len(X_train)} échantillons.")
+
     clf.fit(X_train, y_train)
 
     y_pred = clf.predict(X_test)
