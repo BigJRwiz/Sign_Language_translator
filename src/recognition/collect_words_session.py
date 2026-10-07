@@ -4,10 +4,15 @@ Même mécanique que collect_alphabet_session.py, mais pour une liste de
 mots personnalisée plutôt que l'alphabet. Les labels mots sont stockés
 en MAJUSCULES pour rester cohérents avec les labels de lettres.
 
+Pour un signe avec mouvement (la plupart des mots en LSF), fige ta main
+sur sa position la plus caractéristique au moment d'appuyer sur 's' --
+limite connue du prototype statique, à documenter dans le rapport.
+
 Usage :
     python -m src.recognition.collect_words_session --signer signeur1
 """
 
+import argparse
 import csv
 import os
 
@@ -24,7 +29,9 @@ WINDOW_NAME = "Collecte mots LSF"
 def _ensure_csv_header() -> None:
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
     if not os.path.exists(OUTPUT_CSV):
-        header = ["label", "signer"] + [f"{a}{i}" for i in range(NUM_LANDMARKS) for a in ("x", "y", "z")]
+        header = ["label", "signer"] + [
+            f"{axis}{i}" for i in range(NUM_LANDMARKS) for axis in ("x", "y", "z")
+        ]
         with open(OUTPUT_CSV, "w", newline="") as f:
             csv.writer(f).writerow(header)
 
@@ -37,8 +44,14 @@ def _row(label, signer, hand_landmarks):
 
 
 def _overlay(frame, word, saved, target):
-    cv2.putText(frame, f"Mot : {word}  ({saved}/{target})", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    cv2.putText(frame, "[s] sauver  [n] mot suivant  [q] quitter", (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+    cv2.putText(
+        frame, f"Mot : {word}  ({saved}/{target})", (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2,
+    )
+    cv2.putText(
+        frame, "[s] sauver  [n] mot suivant  [q] quitter", (10, 65),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2,
+    )
 
 
 def run(signer: str, samples_per_word: int = 30, camera_index: int = 0) -> None:
@@ -83,9 +96,9 @@ def run(signer: str, samples_per_word: int = 30, camera_index: int = 0) -> None:
 
 
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--signer", required=True)
     parser.add_argument("--samples-per-word", type=int, default=30)
+    parser.add_argument("--camera-index", type=int, default=0)
     args = parser.parse_args()
-    run(args.signer, args.samples_per_word)
+    run(args.signer, args.samples_per_word, args.camera_index)

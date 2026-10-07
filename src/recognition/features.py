@@ -1,33 +1,23 @@
-"""Extraction de features normalisées à partir des landmarks MediaPipe.
+"""Extraction de features à partir des landmarks MediaPipe.
 
-Rend la reconnaissance invariante à la position de la main dans l'image
-et à sa distance à la caméra : centrage sur le poignet (landmark 0),
-mise à l'échelle par la distance poignet -> base du majeur (landmark 9),
-repère stable quelle que soit la forme du signe réalisé.
+Une seule fonction, utilisée à la fois par l'entraînement (train.py) et
+par l'inférence en direct (gui/app.py), pour garantir que les deux
+calculent strictement la même chose. Toute divergence entre ces deux
+usages rend un modèle inutilisable en direct même s'il est bon à
+l'évaluation -- c'est la cause du bug rencontré précédemment.
+
+Features = coordonnées brutes (x, y, z) des 21 points, telles que
+renvoyées par MediaPipe. Volontairement simple : pas de normalisation
+(centrage/mise à l'échelle), cette piste d'amélioration est documentée
+comme perspective future mais n'est plus modifiée avant la démo.
 """
 
-import numpy as np
-
 NUM_LANDMARKS = 21
-WRIST = 0
-MIDDLE_MCP = 9
 
 
-def normalize_landmarks(flat_coords) -> np.ndarray:
-    """flat_coords : 63 valeurs (21 x,y,z) brutes -> 63 valeurs normalisées."""
-    points = np.array(flat_coords, dtype=float).reshape(NUM_LANDMARKS, 3)
-    centered = points - points[WRIST]
-
-    scale_ref = np.linalg.norm(centered[MIDDLE_MCP])
-    if scale_ref < 1e-6:
-        scale_ref = 1.0
-
-    return (centered / scale_ref).flatten()
-
-
-def landmarks_object_to_features(hand_landmarks) -> np.ndarray:
-    """Depuis un objet landmarks MediaPipe (format HandDetector) -> features normalisées."""
-    flat = []
+def landmarks_object_to_features(hand_landmarks) -> list:
+    """Depuis un objet landmarks MediaPipe (21 points) -> liste de 63 floats."""
+    features = []
     for pt in hand_landmarks:
-        flat += [pt.x, pt.y, pt.z]
-    return normalize_landmarks(flat)
+        features += [pt.x, pt.y, pt.z]
+    return features

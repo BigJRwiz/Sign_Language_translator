@@ -1,10 +1,5 @@
 """Session de collecte automatisée pour les 26 lettres de l'alphabet LSF (V2).
 
-Enchaîne les 26 lettres dans une seule session, sans relancer la commande
-à chaque lettre. Réutilise HandDetector (MediaPipe Tasks). Une colonne
-'signer' est ajoutée au CSV pour pouvoir séparer entraînement/test par
-signeur et éviter la fuite de données (cf. cahier des charges).
-
 Touches, pendant la collecte d'une lettre :
   's' : sauvegarder un échantillon (si une main est détectée)
   'r' : annuler le dernier échantillon sauvegardé pour cette lettre
@@ -12,7 +7,7 @@ Touches, pendant la collecte d'une lettre :
   'q' : quitter la session (les lettres déjà complétées restent enregistrées)
 
 Usage :
-    python src/recognition/collect_alphabet_session.py --signer signeur1
+    python -m src.recognition.collect_alphabet_session --signer signeur1
 """
 
 import argparse
