@@ -32,6 +32,7 @@ from src.gui.ui_logic import (
     PAGE_SIGNS, detection_view, mode_accepts,
 )
 from src.gui.views import history as history_view
+from src.gui.views import settings as settings_view
 from src.gui.views import signs as signs_view
 from src.recognition.features import landmarks_object_to_features
 
@@ -65,6 +66,10 @@ class SignProcessor(VideoProcessorBase):
         self.current_label = None
         self.current_conf = 0.0
 
+        # Réglages utilisateur (modifiés depuis la page Paramètres)
+        self.confidence_threshold = CONF_THRESHOLD
+        self.show_landmarks = True
+
     def reset_detection(self) -> None:
         """Permet de re-détecter le même signe sans retirer la main."""
         self._last_label = None
@@ -73,7 +78,7 @@ class SignProcessor(VideoProcessorBase):
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         img = frame.to_ndarray(format="bgr24")
-        img, landmarks_list = self.detector.find_hands(img)
+        img, landmarks_list = self.detector.find_hands(img, draw=self.show_landmarks)
 
         if landmarks_list and self.model is not None:
             features = landmarks_object_to_features(landmarks_list[0])
@@ -88,7 +93,7 @@ class SignProcessor(VideoProcessorBase):
                 cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 255, 0), 3,
             )
 
-            if confidence >= CONF_THRESHOLD:
+            if confidence >= self.confidence_threshold:
                 if prediction != self._last_label:
                     self._last_label = prediction
                     self._stable_count = 1
@@ -139,6 +144,10 @@ def _init_state() -> None:
         st.session_state.paused = False
     if "proc_retries" not in st.session_state:
         st.session_state.proc_retries = 0
+    if "cfg_threshold" not in st.session_state:
+        st.session_state.cfg_threshold = CONF_THRESHOLD
+    if "cfg_show_landmarks" not in st.session_state:
+        st.session_state.cfg_show_landmarks = True
     if "history_log" not in st.session_state:
         st.session_state.history_log = []
     if "page" not in st.session_state:
@@ -176,7 +185,7 @@ def _capture(proc) -> None:
     if proc is None or st.session_state.paused:
         return
     label, conf = proc.current_label, proc.current_conf
-    if label and conf >= CONF_THRESHOLD and mode_accepts(label, st.session_state.mode):
+    if label and conf >= st.session_state.cfg_threshold and mode_accepts(label, st.session_state.mode):
         add_recognition(label, conf)
         st.toast(f"« {label} » ajouté")
 
@@ -210,7 +219,8 @@ def live_panel(proc) -> None:
     label = proc.current_label if proc is not None else None
     conf = proc.current_conf if proc is not None else 0.0
     view = detection_view(
-        label, conf, st.session_state.paused, st.session_state.mode, CONF_THRESHOLD
+        label, conf, st.session_state.paused, st.session_state.mode,
+        st.session_state.cfg_threshold,
     )
 
     with st.container(key="detect_card"):
@@ -256,6 +266,9 @@ def render_recognition() -> None:
             )
             playing = bool(ctx.state.playing)
             proc = ctx.video_processor if playing else None
+            if proc is not None:
+                proc.confidence_threshold = st.session_state.cfg_threshold
+                proc.show_landmarks = st.session_state.cfg_show_landmarks
 
             st.markdown(theme.chips_html(playing), unsafe_allow_html=True)
 
@@ -271,7 +284,7 @@ def render_recognition() -> None:
             with b3:
                 with st.popover("⚙"):
                     st.markdown("**Paramètres de détection**")
-                    st.caption(f"Seuil de confiance : {CONF_THRESHOLD:.0%}")
+                    st.caption(f"Seuil de confiance : {st.session_state.cfg_threshold:.0%}")
                     st.caption(f"Maintien requis : {STABILITY_FRAMES} images")
                     st.caption("Modèle : Random Forest sur landmarks MediaPipe")
 
@@ -307,18 +320,6 @@ def render_recognition() -> None:
 
 
 # ==========================================================================
-# PAGES PAS ENCORE DISPONIBLES (étapes suivantes)
-# ==========================================================================
-def render_placeholder(icon_name: str, title: str) -> None:
-    st.markdown(
-        theme.page_header_html(icon_name, title, "Cette section arrive prochainement."),
-        unsafe_allow_html=True,
-    )
-    with st.container(key="card_placeholder"):
-        st.markdown(theme.note_html("Bientôt disponible."), unsafe_allow_html=True)
-
-
-# ==========================================================================
 # CONFIGURATION, SIDEBAR ET ROUTAGE
 # ==========================================================================
 st.set_page_config(
@@ -351,6 +352,6 @@ if _page == PAGE_SIGNS:
 elif _page == PAGE_HISTORY:
     history_view.render()
 elif _page == PAGE_SETTINGS:
-    render_placeholder("sliders", "Paramètres")
+    settings_view.render()
 else:
     render_recognition()
