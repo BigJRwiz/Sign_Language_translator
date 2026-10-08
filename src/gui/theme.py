@@ -141,6 +141,14 @@ section[data-testid="stSidebar"]{background:#0b1424;border-right:1px solid var(-
 .tile .t-warn{position:absolute;top:.35rem;right:.5rem;font-size:.75rem;color:var(--warn);}
 .legend{color:var(--muted);font-size:.78rem;margin-top:.9rem;}
 .empty-note{padding:1.2rem;border-radius:14px;border:1px dashed var(--line);color:var(--muted);font-size:.92rem;}
+.htable{width:100%;border-collapse:collapse;font-size:.92rem;}
+.htable th{text-align:left;color:var(--muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;padding:.5rem .7rem;border-bottom:1px solid var(--line);}
+.htable td{padding:.65rem .7rem;border-bottom:1px solid rgba(148,163,184,.08);}
+.htable tr:last-child td{border-bottom:none;}
+.htable .h-time{color:var(--muted);font-variant-numeric:tabular-nums;}
+.htable .h-sign{font-weight:700;letter-spacing:.4px;}
+.htable .h-conf{font-weight:600;color:var(--accent);text-align:right;}
+.htable th.r{text-align:right;}
 .tech-footer{display:flex;justify-content:flex-end;align-items:center;gap:2rem;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--line);color:#a9b8cc;font-size:.88rem;}
 .tech-footer span{display:inline-flex;align-items:center;gap:.5rem;}
 .tech-footer svg{color:var(--accent);}
@@ -329,3 +337,20 @@ def note_html(text: str) -> str:
 
 def legend_html(text: str) -> str:
     return f'<div class="legend">{escape(text)}</div>'
+
+
+def history_table_html(entries: list, limit: int = 100) -> str:
+    """Tableau des reconnaissances, de la plus récente à la plus ancienne."""
+    rows = []
+    for e in reversed(entries[-limit:]):
+        hour = e["ts"].partition("T")[2]
+        kind = "letter" if e["category"] == "Alphabet" else "word"
+        rows.append(
+            f'<tr><td class="h-time">{escape(hour)}</td>'
+            f'<td class="h-sign">{escape(e["label"])}</td>'
+            f'<td><span class="rchip {kind}">{escape(e["category"])}</span></td>'
+            f'<td class="h-conf">{e["conf"] * 100:.0f} %</td></tr>'
+        )
+    head = ('<tr><th>Heure</th><th>Signe</th><th>Catégorie</th>'
+            '<th class="r">Confiance</th></tr>')
+    return f'<table class="htable">{head}{"".join(rows)}</table>'

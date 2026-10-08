@@ -87,3 +87,25 @@ def split_vocabulary(classes) -> tuple:
     letters = sorted(c for c in labels if is_letter(c))
     words = sorted(c for c in labels if not is_letter(c))
     return letters, words
+
+
+def history_stats(entries: list) -> dict:
+    """Statistiques simples du journal : total, lettres, signes courants, confiance moyenne."""
+    total = len(entries)
+    letters = sum(1 for e in entries if e["category"] == CATEGORY_LETTER)
+    avg = (sum(e["conf"] for e in entries) / total * 100) if total else 0.0
+    return {"total": total, "letters": letters, "words": total - letters, "avg_conf": avg}
+
+
+def history_to_csv(entries: list) -> str:
+    """Export CSV du journal (BOM UTF-8 pour une ouverture correcte dans Excel)."""
+    import csv
+    import io
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["date", "heure", "signe", "categorie", "confiance_pct"])
+    for e in entries:
+        date, _, hour = e["ts"].partition("T")
+        writer.writerow([date, hour, e["label"], e["category"], f"{e['conf'] * 100:.1f}"])
+    return "\ufeff" + buf.getvalue()

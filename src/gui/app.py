@@ -26,10 +26,12 @@ from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
 from src.detection.hand_detector import HandDetector
 from src.gui import theme
+from src.gui.state import add_recognition
 from src.gui.ui_logic import (
     MODE_ALPHABET, MODE_WORDS, NAV_ITEMS, PAGE_HISTORY, PAGE_RECO, PAGE_SETTINGS,
     PAGE_SIGNS, detection_view, mode_accepts,
 )
+from src.gui.views import history as history_view
 from src.gui.views import signs as signs_view
 from src.recognition.features import landmarks_object_to_features
 
@@ -54,6 +56,7 @@ class SignProcessor(VideoProcessorBase):
             self.model = None
 
         self.result_queue: queue.Queue = queue.Queue()
+        self.validated_conf: queue.Queue = queue.Queue()  # confiance du signe validé
         self._last_label = None
         self._stable_count = 0
         self._awaiting_release = False
@@ -95,6 +98,7 @@ class SignProcessor(VideoProcessorBase):
 
                 ready = self._stable_count >= STABILITY_FRAMES
                 if ready and not self._awaiting_release:
+                    self.validated_conf.put(float(confidence))
                     self.result_queue.put(prediction)
                     self._awaiting_release = True
 
@@ -135,6 +139,8 @@ def _init_state() -> None:
         st.session_state.paused = False
     if "proc_retries" not in st.session_state:
         st.session_state.proc_retries = 0
+    if "history_log" not in st.session_state:
+        st.session_state.history_log = []
     if "page" not in st.session_state:
         st.session_state.page = PAGE_RECO
 
@@ -171,7 +177,7 @@ def _capture(proc) -> None:
         return
     label, conf = proc.current_label, proc.current_conf
     if label and conf >= CONF_THRESHOLD and mode_accepts(label, st.session_state.mode):
-        st.session_state.confirmed_text.append(label)
+        add_recognition(label, conf)
         st.toast(f"« {label} » ajouté")
 
 
@@ -184,10 +190,14 @@ def _drain_queue(proc) -> None:
             symbol = proc.result_queue.get_nowait()
         except queue.Empty:
             break
+        try:
+            conf = proc.validated_conf.get_nowait()
+        except queue.Empty:
+            conf = proc.current_conf
         if st.session_state.paused:
             continue
         if mode_accepts(symbol, st.session_state.mode):
-            st.session_state.confirmed_text.append(str(symbol))
+            add_recognition(symbol, conf)
 
 
 # ==========================================================================
@@ -339,7 +349,7 @@ _page = st.session_state.page
 if _page == PAGE_SIGNS:
     signs_view.render()
 elif _page == PAGE_HISTORY:
-    render_placeholder("clock", "Historique")
+    history_view.render()
 elif _page == PAGE_SETTINGS:
     render_placeholder("sliders", "Paramètres")
 else:
