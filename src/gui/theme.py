@@ -6,6 +6,7 @@ via st.markdown(..., unsafe_allow_html=True).
 """
 
 from html import escape
+from urllib.parse import quote
 
 # --------------------------------------------------------------------------
 # Icônes SVG (tracés simples, style « outline »)
@@ -120,6 +121,26 @@ section[data-testid="stSidebar"]{background:#0b1424;border-right:1px solid var(-
 .st-key-btn_new button{background:var(--accent);color:#04222b;border:none;}
 .st-key-btn_new button:hover{background:#67e8f9;color:#04222b;}
 
+[class*="st-key-card_"]{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;padding:1.25rem 1.4rem;box-shadow:0 12px 32px rgba(0,0,0,.35);}
+[class*="st-key-nav_"] button{justify-content:flex-start;height:3rem;min-height:3rem;padding:0 1rem;background:transparent;border:1px solid transparent;color:#a9b8cc;font-weight:500;font-size:.95rem;}
+[class*="st-key-nav_"] button:hover{background:rgba(34,211,238,.07);border-color:transparent;color:#fff;}
+[class*="st-key-nav_"] button p{display:flex;align-items:center;}
+[class*="st-key-nav_"] button p::before{content:"";display:inline-block;width:22px;height:22px;margin-right:.85rem;background:currentColor;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center;}
+.sb-foot-fixed{position:fixed;bottom:1.2rem;width:256px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1rem;}
+.stat-card{padding:1rem 1.2rem;border-radius:14px;background:rgba(10,18,32,.65);border:1px solid var(--line);}
+.stat-val{font-size:1.9rem;font-weight:800;color:var(--accent);line-height:1.1;}
+.stat-lab{color:var(--muted);font-size:.82rem;margin-top:.3rem;}
+.sign-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.8rem;}
+.tile{position:relative;padding:.9rem .4rem .7rem;border-radius:14px;text-align:center;background:rgba(10,18,32,.65);border:1px solid var(--line);}
+.tile .t-lab{font-size:1.5rem;font-weight:800;color:var(--text);line-height:1.1;word-break:break-word;}
+.tile.word .t-lab{font-size:1.05rem;letter-spacing:.5px;color:#dccdff;}
+.tile .t-cnt{font-size:.7rem;color:var(--muted);margin-top:.35rem;}
+.tile.off{opacity:.38;border-style:dashed;}
+.tile.warn{border-color:rgba(245,158,11,.55);}
+.tile .t-warn{position:absolute;top:.35rem;right:.5rem;font-size:.75rem;color:var(--warn);}
+.legend{color:var(--muted);font-size:.78rem;margin-top:.9rem;}
+.empty-note{padding:1.2rem;border-radius:14px;border:1px dashed var(--line);color:var(--muted);font-size:.92rem;}
 .tech-footer{display:flex;justify-content:flex-end;align-items:center;gap:2rem;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--line);color:#a9b8cc;font-size:.88rem;}
 .tech-footer span{display:inline-flex;align-items:center;gap:.5rem;}
 .tech-footer svg{color:var(--accent);}
@@ -146,39 +167,66 @@ def dynamic_css(mode_active_key: str, paused: bool) -> str:
 # --------------------------------------------------------------------------
 # Blocs HTML
 # --------------------------------------------------------------------------
-def sidebar_html() -> str:
-    nav = [("camera", "Reconnaissance", True), ("clock", "Historique", False),
-           ("book", "Signes", False), ("sliders", "Paramètres", False)]
-    items = "".join(
-        f'<div class="sb-item{" active" if active else ""}">{icon(name, 22)}<span>{label}</span></div>'
-        for name, label, active in nav
-    )
+def sidebar_brand_html() -> str:
     return _compact(f"""
-    <div class="sb-wrap">
+    <div class="sb-brand">
+      <div class="sb-logo">{icon("hand", 28, stroke=1.6)}</div>
       <div>
-        <div class="sb-brand">
-          <div class="sb-logo">{icon("hand", 28, stroke=1.6)}</div>
-          <div>
-            <div class="sb-name">Heri Kwetu <span>Sign</span></div>
-            <div class="sb-sub">Ensemble pour une<br>communication inclusive</div>
-          </div>
-        </div>
-        {items}
-      </div>
-      <div class="sb-foot">
-        <div class="sb-foot-name">{icon("pin", 18, "#22d3ee")}<span>Centre Heri Kwetu</span></div>
-        <div class="sb-foot-city">Bukavu, RDC</div>
-        <div class="sb-foot-quote">« La technologie au service de l'inclusion »</div>
+        <div class="sb-name">Heri Kwetu <span>Sign</span></div>
+        <div class="sb-sub">Ensemble pour une<br>communication inclusive</div>
       </div>
     </div>
     """)
 
 
-def header_html() -> str:
+def sidebar_footer_html() -> str:
     return _compact(f"""
-    <div class="page-title">{icon("camera", 38, stroke=1.6)}<span>Reconnaissance des signes</span></div>
-    <div class="page-sub">Faites un signe devant la caméra pour obtenir sa traduction.</div>
+    <div class="sb-foot-fixed"><div class="sb-foot">
+      <div class="sb-foot-name">{icon("pin", 18, "#22d3ee")}<span>Centre Heri Kwetu</span></div>
+      <div class="sb-foot-city">Bukavu, RDC</div>
+      <div class="sb-foot-quote">« La technologie au service de l'inclusion »</div>
+    </div></div>
     """)
+
+
+def _mask_uri(icon_name: str) -> str:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+        'stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+        f"{_ICONS[icon_name]}</svg>"
+    )
+    return 'url("data:image/svg+xml,' + quote(svg) + '")'
+
+
+def nav_css(nav_items: list, active_key: str) -> str:
+    """Icônes des boutons de navigation + mise en évidence de la page active."""
+    rules = []
+    for key, _label, icon_name in nav_items:
+        uri = _mask_uri(icon_name)
+        rules.append(
+            f".st-key-nav_{key} button p::before"
+            f"{{-webkit-mask-image:{uri};mask-image:{uri};}}"
+        )
+    rules.append(
+        f".st-key-nav_{active_key} button{{background:linear-gradient(90deg,"
+        "rgba(34,211,238,.18),rgba(34,211,238,.06));border:1px solid rgba(34,211,238,.28);color:#fff;}}"
+    )
+    rules.append(f".st-key-nav_{active_key} button p::before{{background:var(--accent);}}")
+    return "<style>" + "".join(rules) + "</style>"
+
+
+def page_header_html(icon_name: str, title: str, subtitle: str) -> str:
+    return _compact(f"""
+    <div class="page-title">{icon(icon_name, 38, stroke=1.6)}<span>{escape(title)}</span></div>
+    <div class="page-sub">{escape(subtitle)}</div>
+    """)
+
+
+def header_html() -> str:
+    return page_header_html(
+        "camera", "Reconnaissance des signes",
+        "Faites un signe devant la caméra pour obtenir sa traduction.",
+    )
 
 
 def status_html(playing: bool) -> str:
@@ -244,3 +292,40 @@ def footer_html() -> str:
       <span>{icon("cpu", 20)}IA</span>
     </div>
     """)
+
+
+def stat_cards_html(stats: list) -> str:
+    """stats : liste de (valeur, libellé)."""
+    cards = "".join(
+        f'<div class="stat-card"><div class="stat-val">{escape(str(v))}</div>'
+        f'<div class="stat-lab">{escape(l)}</div></div>'
+        for v, l in stats
+    )
+    return f'<div class="stat-grid">{cards}</div>'
+
+
+def signs_grid_html(tiles: list, word: bool = False) -> str:
+    """tiles : liste de dicts {label, count, available, note}."""
+    out = []
+    for t in tiles:
+        cls = "tile" + (" word" if word else "")
+        if not t["available"]:
+            cls += " off"
+        if t.get("note"):
+            cls += " warn"
+        warn = '<span class="t-warn">⚠</span>' if t.get("note") else ""
+        title = f' title="{escape(t["note"])}"' if t.get("note") else ""
+        cnt = f'{t["count"]} éch.' if t["available"] else "non appris"
+        out.append(
+            f'<div class="{cls}"{title}>{warn}<div class="t-lab">{escape(t["label"])}</div>'
+            f'<div class="t-cnt">{cnt}</div></div>'
+        )
+    return f'<div class="sign-grid">{"".join(out)}</div>'
+
+
+def note_html(text: str) -> str:
+    return f'<div class="empty-note">{escape(text)}</div>'
+
+
+def legend_html(text: str) -> str:
+    return f'<div class="legend">{escape(text)}</div>'

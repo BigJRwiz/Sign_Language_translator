@@ -26,7 +26,11 @@ from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
 from src.detection.hand_detector import HandDetector
 from src.gui import theme
-from src.gui.ui_logic import MODE_ALPHABET, MODE_WORDS, detection_view, mode_accepts
+from src.gui.ui_logic import (
+    MODE_ALPHABET, MODE_WORDS, NAV_ITEMS, PAGE_HISTORY, PAGE_RECO, PAGE_SETTINGS,
+    PAGE_SIGNS, detection_view, mode_accepts,
+)
+from src.gui.views import signs as signs_view
 from src.recognition.features import landmarks_object_to_features
 
 MODEL_PATH = "data/models/alphabet_classifier.joblib"
@@ -131,6 +135,12 @@ def _init_state() -> None:
         st.session_state.paused = False
     if "proc_retries" not in st.session_state:
         st.session_state.proc_retries = 0
+    if "page" not in st.session_state:
+        st.session_state.page = PAGE_RECO
+
+
+def _goto(page: str) -> None:
+    st.session_state.page = page
 
 
 def _set_mode(mode: str) -> None:
@@ -216,7 +226,90 @@ def live_panel(proc) -> None:
 
 
 # ==========================================================================
-# PAGE
+# PAGE « RECONNAISSANCE » (mise en page inchangée, simplement encapsulée)
+# ==========================================================================
+def render_recognition() -> None:
+    head_left, head_right = st.columns([5, 1.4])
+    with head_left:
+        st.markdown(theme.header_html(), unsafe_allow_html=True)
+    with head_right:
+        status_slot = st.empty()
+
+    col_cam, col_info = st.columns([1.35, 1], gap="large")
+
+    with col_cam:
+        with st.container(key="cam_card"):
+            ctx = webrtc_streamer(
+                key="sign-recognition",
+                video_processor_factory=SignProcessor,
+                media_stream_constraints={"video": True, "audio": False},
+            )
+            playing = bool(ctx.state.playing)
+            proc = ctx.video_processor if playing else None
+
+            st.markdown(theme.chips_html(playing), unsafe_allow_html=True)
+
+            b1, b2, b3 = st.columns([1, 1.5, 0.45])
+            with b1:
+                st.button("📷 Capture", key="btn_capture", on_click=_capture, args=(proc,))
+            with b2:
+                st.button(
+                    "Reprendre la détection" if st.session_state.paused else "Arrêter la détection",
+                    key="btn_pause",
+                    on_click=_toggle_pause,
+                )
+            with b3:
+                with st.popover("⚙"):
+                    st.markdown("**Paramètres de détection**")
+                    st.caption(f"Seuil de confiance : {CONF_THRESHOLD:.0%}")
+                    st.caption(f"Maintien requis : {STABILITY_FRAMES} images")
+                    st.caption("Modèle : Random Forest sur landmarks MediaPipe")
+
+        with st.container(key="mode_card"):
+            st.markdown(
+                theme.card_title(
+                    "target", "Mode de reconnaissance",
+                    "Choisissez le type de signe à reconnaître.",
+                ),
+                unsafe_allow_html=True,
+            )
+            m1, m2 = st.columns(2)
+            with m1:
+                st.button("A · Alphabet", key="mode_alpha", on_click=_set_mode, args=(MODE_ALPHABET,))
+            with m2:
+                st.button("✋ Signes courants", key="mode_words", on_click=_set_mode, args=(MODE_WORDS,))
+
+    with col_info:
+        live_panel(proc)
+
+    status_slot.markdown(theme.status_html(playing), unsafe_allow_html=True)
+    st.markdown(theme.footer_html(), unsafe_allow_html=True)
+
+    # Le processeur n'existe qu'un instant après le démarrage du flux : on
+    # relance brièvement la page jusqu'à ce qu'il soit disponible (borné).
+    if playing and proc is None:
+        if st.session_state.proc_retries < MAX_PROC_RETRIES:
+            st.session_state.proc_retries += 1
+            time.sleep(0.4)
+            st.rerun()
+    else:
+        st.session_state.proc_retries = 0
+
+
+# ==========================================================================
+# PAGES PAS ENCORE DISPONIBLES (étapes suivantes)
+# ==========================================================================
+def render_placeholder(icon_name: str, title: str) -> None:
+    st.markdown(
+        theme.page_header_html(icon_name, title, "Cette section arrive prochainement."),
+        unsafe_allow_html=True,
+    )
+    with st.container(key="card_placeholder"):
+        st.markdown(theme.note_html("Bientôt disponible."), unsafe_allow_html=True)
+
+
+# ==========================================================================
+# CONFIGURATION, SIDEBAR ET ROUTAGE
 # ==========================================================================
 st.set_page_config(
     page_title="Heri Kwetu Sign",
@@ -234,72 +327,20 @@ st.markdown(
     ),
     unsafe_allow_html=True,
 )
+st.markdown(theme.nav_css(NAV_ITEMS, st.session_state.page), unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown(theme.sidebar_html(), unsafe_allow_html=True)
+    st.markdown(theme.sidebar_brand_html(), unsafe_allow_html=True)
+    for _key, _label, _icon in NAV_ITEMS:
+        st.button(_label, key=f"nav_{_key}", on_click=_goto, args=(_key,))
+    st.markdown(theme.sidebar_footer_html(), unsafe_allow_html=True)
 
-head_left, head_right = st.columns([5, 1.4])
-with head_left:
-    st.markdown(theme.header_html(), unsafe_allow_html=True)
-with head_right:
-    status_slot = st.empty()
-
-col_cam, col_info = st.columns([1.35, 1], gap="large")
-
-with col_cam:
-    with st.container(key="cam_card"):
-        ctx = webrtc_streamer(
-            key="sign-recognition",
-            video_processor_factory=SignProcessor,
-            media_stream_constraints={"video": True, "audio": False},
-        )
-        playing = bool(ctx.state.playing)
-        proc = ctx.video_processor if playing else None
-
-        st.markdown(theme.chips_html(playing), unsafe_allow_html=True)
-
-        b1, b2, b3 = st.columns([1, 1.5, 0.45])
-        with b1:
-            st.button("📷 Capture", key="btn_capture", on_click=_capture, args=(proc,))
-        with b2:
-            st.button(
-                "Reprendre la détection" if st.session_state.paused else "Arrêter la détection",
-                key="btn_pause",
-                on_click=_toggle_pause,
-            )
-        with b3:
-            with st.popover("⚙"):
-                st.markdown("**Paramètres de détection**")
-                st.caption(f"Seuil de confiance : {CONF_THRESHOLD:.0%}")
-                st.caption(f"Maintien requis : {STABILITY_FRAMES} images")
-                st.caption("Modèle : Random Forest sur landmarks MediaPipe")
-
-    with st.container(key="mode_card"):
-        st.markdown(
-            theme.card_title(
-                "target", "Mode de reconnaissance",
-                "Choisissez le type de signe à reconnaître.",
-            ),
-            unsafe_allow_html=True,
-        )
-        m1, m2 = st.columns(2)
-        with m1:
-            st.button("A · Alphabet", key="mode_alpha", on_click=_set_mode, args=(MODE_ALPHABET,))
-        with m2:
-            st.button("✋ Signes courants", key="mode_words", on_click=_set_mode, args=(MODE_WORDS,))
-
-with col_info:
-    live_panel(proc)
-
-status_slot.markdown(theme.status_html(playing), unsafe_allow_html=True)
-st.markdown(theme.footer_html(), unsafe_allow_html=True)
-
-# Le processeur n'existe qu'un instant après le démarrage du flux : on
-# relance brièvement la page jusqu'à ce qu'il soit disponible (borné).
-if playing and proc is None:
-    if st.session_state.proc_retries < MAX_PROC_RETRIES:
-        st.session_state.proc_retries += 1
-        time.sleep(0.4)
-        st.rerun()
+_page = st.session_state.page
+if _page == PAGE_SIGNS:
+    signs_view.render()
+elif _page == PAGE_HISTORY:
+    render_placeholder("clock", "Historique")
+elif _page == PAGE_SETTINGS:
+    render_placeholder("sliders", "Paramètres")
 else:
-    st.session_state.proc_retries = 0
+    render_recognition()

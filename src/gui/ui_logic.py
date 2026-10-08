@@ -8,6 +8,27 @@ Aucune de ces fonctions ne modifie la reconnaissance elle-même.
 MODE_ALPHABET = "alphabet"
 MODE_WORDS = "mots"
 
+CATEGORY_LETTER = "Alphabet"
+CATEGORY_WORD = "Signe courant"
+
+PAGE_RECO = "reconnaissance"
+PAGE_HISTORY = "historique"
+PAGE_SIGNS = "signes"
+PAGE_SETTINGS = "parametres"
+
+# (clé de page, libellé, icône) — ordre d'affichage dans la sidebar
+NAV_ITEMS = [
+    (PAGE_RECO, "Reconnaissance", "camera"),
+    (PAGE_HISTORY, "Historique", "clock"),
+    (PAGE_SIGNS, "Signes", "book"),
+    (PAGE_SETTINGS, "Paramètres", "sliders"),
+]
+
+# Limites déjà constatées lors de l'évaluation du modèle (cf. docs/resultats_v2_alphabet.md)
+KNOWN_LIMITS = {
+    "J": "Signe dynamique (rotation) : reconnaissance peu fiable en mode statique",
+}
+
 
 def is_letter(label: str) -> bool:
     """Une lettre de l'alphabet est un label d'un seul caractère."""
@@ -53,3 +74,16 @@ def detection_view(label, conf, paused, mode, threshold):
 
     return {"word": label, "conf_pct": conf_pct, "kind": "ok",
             "message": "Signe correctement reconnu"}
+
+
+def category_of(label: str) -> str:
+    """Catégorie d'affichage d'un label reconnu."""
+    return CATEGORY_LETTER if is_letter(label) else CATEGORY_WORD
+
+
+def split_vocabulary(classes) -> tuple:
+    """Sépare les classes du modèle en (lettres, signes courants), triées."""
+    labels = [str(c) for c in classes]
+    letters = sorted(c for c in labels if is_letter(c))
+    words = sorted(c for c in labels if not is_letter(c))
+    return letters, words
